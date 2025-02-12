@@ -701,7 +701,7 @@ async def switch_model(update, context):
         return
 
     new_model = context.args[0]
-    Users.set_config(convo_id, "GPT_ENGINE", new_model)
+    Users.set_config(convo_id, "engine", new_model)
     await context.bot.send_message(
         chat_id=chatid,
         message_thread_id=message_thread_id,
