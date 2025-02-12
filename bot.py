@@ -803,6 +803,7 @@ async def post_init(application: Application) -> None:
         BotCommand('start', 'Start the bot'),
         BotCommand('en2zh', 'Translate to Chinese'),
         BotCommand('zh2en', 'Translate to English'),
+        BotCommand('switch_model','change model')
     ])
     description = (
         "I am an Assistant, a large language model trained by OpenAI. I will do my best to help answer your questions."
