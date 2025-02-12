@@ -685,6 +685,35 @@ async def reset_chat(update, context):
         update_initial_model()
     await delete_message(update, context, [message.message_id, user_message_id])
 
+
+@decorators.GroupAuthorization
+@decorators.Authorization
+async def switch_model(update, context):
+    _, _, _, chatid, user_message_id, _, _, message_thread_id, convo_id, _, _, _ = await GetMesageInfo(update, context)
+    if len(context.args) == 0:
+        await context.bot.send_message(
+            chat_id=chatid,
+            message_thread_id=message_thread_id,
+            text="Please provide a model name to switch to.",
+            parse_mode='MarkdownV2',
+            reply_to_message_id=user_message_id,
+        )
+        return
+
+    new_model = context.args[0]
+    Users.set_config(convo_id, "GPT_ENGINE", new_model)
+    await context.bot.send_message(
+        chat_id=chatid,
+        message_thread_id=message_thread_id,
+        text=f"Model switched to {new_model}.",
+        parse_mode='MarkdownV2',
+        reply_to_message_id=user_message_id,
+    )
+    await delete_message(update, context, [user_message_id])
+
+
+
+
 @decorators.AdminAuthorization
 @decorators.GroupAuthorization
 @decorators.Authorization
@@ -805,6 +834,7 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("reset", reset_chat))
     application.add_handler(CommandHandler("en2zh", lambda update, context: command_bot(update, context, "Simplified Chinese")))
     application.add_handler(CommandHandler("zh2en", lambda update, context: command_bot(update, context, "english")))
+    application.add_handler(CommandHandler("switch_model", switch_model))   
     application.add_handler(InlineQueryHandler(inlinequery))
     application.add_handler(CallbackQueryHandler(button_press))
     application.add_handler(MessageHandler((filters.TEXT | filters.VOICE) & ~filters.COMMAND, lambda update, context: command_bot(update, context, prompt=None, has_command=False), block = False))
