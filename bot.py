@@ -737,53 +737,34 @@ async def switch_model(update, context):
     await delete_message(update, context, [user_message_id])
 
 
-@decorators.GroupAuthorization
-@decorators.Authorization
-async def start_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """启动支付流程"""
-    chat_id = update.message.chat_id
-    title = "Payment Title"
-    description = "Payment Description"
-    payload = "{}";
-    provider_token = ""
-    currency = "XTR"
-    prices = [LabeledPrice("Test", 1)]  # 价格以最小货币单位表示，例如1000表示10.00美元
-
-    await context.bot.send_invoice(
-        chat_id=chat_id,
-        title=title,
-        description=description,
-        payload=payload,
-        provider_token=provider_token,
-        currency=currency,
-        prices=prices,
-        start_parameter="test-payment",
-        need_name=True,
-        need_phone_number=True,
-        need_email=True,
-        need_shipping_address=True,
-        is_flexible=False,
+def start_payment(update: Update, context: CallbackContext):
+    out = context.bot.send_invoice(
+        chat_id=update.message.chat_id,
+        title="Test donation",
+        description="Give money here.",
+        payload="test",
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice("Give", 100)],
+        need_name=False,
     )
 
-# 添加支付处理器
-async def pre_checkout_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """处理预结账查询"""
-    query: PreCheckoutQuery = update.pre_checkout_query
-    # 检查支付信息是否有效
-    if query.invoice_payload != 'expected_payload':
-        await query.answer(ok=False, error_message="Something went wrong...")
-    else:
-        await query.answer(ok=True)
 
-async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """处理成功支付"""
-    payment: SuccessfulPayment = update.message.successful_payment
-    chat_id = update.message.chat_id
-    # 发送支付成功消息
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=f"Payment successful! Thank you for your purchase of {payment.total_amount / 100} {payment.currency}."
-    )
+def pre_checkout_check(update: Update, context: CallbackContext):
+    query = update.pre_checkout_query
+    query.answer(ok=True)
+
+
+def successful_payment(update: Update, context):
+    col = get_collection()
+    receipt = update.message.successful_payment
+    col.insert_one({"telegram_uid": update.message.chat.username, 
+                   "donated_amount": receipt.total_amount,
+                   "currency": receipt.currency,
+                   "datetime": str(datetime.datetime.now())})
+    print_col(col)
+    update.message.reply_text("Thank you for your purchase!")
+
 
 @decorators.AdminAuthorization
 @decorators.GroupAuthorization
@@ -952,7 +933,6 @@ if __name__ == '__main__':
     # 添加支付处理器
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_check))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
-
     application.add_handler(CommandHandler("start_payment", start_payment))
 
     if WEB_HOOK:
