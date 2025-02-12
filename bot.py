@@ -742,7 +742,7 @@ def start_payment(update, context):
         chat_id=update.message.chat_id,
         title="Test donation",
         description="Give money here.",
-        payload="test",
+        payload="{}",
         provider_token="",
         currency="XTR",
         prices=[LabeledPrice("Give", 100)],
