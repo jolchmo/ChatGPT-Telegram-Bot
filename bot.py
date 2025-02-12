@@ -38,6 +38,7 @@ from config import (
 from utils.i18n import strings
 from utils.scripts import GetMesageInfo, safe_get, is_emoji
 
+
 from telegram.constants import ChatAction
 from telegram import (
     BotCommand, 
@@ -62,6 +63,7 @@ from telegram.ext import (
     AIORateLimiter, 
     InlineQueryHandler, 
     ContextTypes,
+    PreCheckoutQueryHandler,
 )
 
 from datetime import timedelta
@@ -763,60 +765,25 @@ async def start_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         is_flexible=False,
     )
 
-
+# 添加支付处理器
 async def pre_checkout_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理预结账查询"""
     query: PreCheckoutQuery = update.pre_checkout_query
-    if query is None:
-        logger.warning("pre_checkout_check: update.pre_checkout_query is None")
-        return  # 或者发送错误消息
-
-    # 从 context.user_data 获取 expected_payload
-    expected_payload = context.user_data.get('expected_payload')
-    if expected_payload is None:
-        logger.error("pre_checkout_check: expected_payload not found in context.user_data")
-        await query.answer(ok=False, error_message="订单信息不完整，请重试...")
-        return
-
     # 检查支付信息是否有效
-    if query.invoice_payload != expected_payload:
-        logger.warning(f"pre_checkout_check: Invalid invoice_payload: {query.invoice_payload}, expected: {expected_payload}")
-        await query.answer(ok=False, error_message="订单信息验证失败，请检查订单或联系客服...")
+    if query.invoice_payload != 'expected_payload':
+        await query.answer(ok=False, error_message="Something went wrong...")
     else:
         await query.answer(ok=True)
 
 async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理成功支付"""
     payment: SuccessfulPayment = update.message.successful_payment
-    if payment is None:
-        logger.warning("successful_payment: update.message.successful_payment is None")
-        return  # 或者发送错误消息
-
     chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-
-    # 记录支付信息 (示例)
-    logger.info(f"Payment successful: user_id={user_id}, chat_id={chat_id}, amount={payment.total_amount / 100}, currency={payment.currency}, invoice_payload={payment.invoice_payload}")
-    # TODO: 将支付信息保存到数据库
-
-    # 给予用户奖励 (示例)
-    amount = payment.total_amount / 100
-    if 'usage_credit' not in context.user_data:
-        context.user_data['usage_credit'] = 0
-    context.user_data['usage_credit'] += amount * 10  # 每支持 1 美元，增加 10 个单位的使用额度
-    logger.info(f"User {user_id} received {amount * 10} usage credit, total credit: {context.user_data['usage_credit']}")
-
     # 发送支付成功消息
-    message_text = f"Payment successful! Thank you for your purchase of {payment.total_amount / 100} {payment.currency}.\n" \
-                   f"You have received {amount * 10} usage credit.\n" \
-                   f"Your total usage credit is now {context.user_data['usage_credit']}."
-    escaped_message_text = escape(message_text)  # 转义消息文本
     await context.bot.send_message(
         chat_id=chat_id,
-        text=escaped_message_text,
-        parse_mode='MarkdownV2'  # 使用 MarkdownV2 解析
+        text=f"Payment successful! Thank you for your purchase of {payment.total_amount / 100} {payment.currency}."
     )
-
 
 @decorators.AdminAuthorization
 @decorators.GroupAuthorization
@@ -979,8 +946,10 @@ if __name__ == '__main__':
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     application.add_error_handler(error)
 
-    application.add_handler(MessageHandler(filters.UpdateType.PRE_CHECKOUT_QUERY, pre_checkout_check))
-    application.add_handler(MessageHandler(filters.UpdateType.SUCCESSFUL_PAYMENT, successful_payment))
+    # 添加支付处理器
+    application.add_handler(PreCheckoutQueryHandler(pre_checkout_check))
+    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
+
     application.add_handler(CommandHandler("start_payment", start_payment))
 
     if WEB_HOOK:
