@@ -689,7 +689,6 @@ async def reset_chat(update, context):
 @decorators.GroupAuthorization
 @decorators.Authorization
 async def switch_model(update, context):
-    from telegram.utils.helpers import escape_markdown
     _, _, _, chatid, user_message_id, _, _, message_thread_id, convo_id, _, _, _ = await GetMesageInfo(update, context)
     if len(context.args) == 0:
         await context.bot.send_message(
@@ -706,7 +705,7 @@ async def switch_model(update, context):
     await context.bot.send_message(
         chat_id=chatid,
         message_thread_id=message_thread_id,
-        text=f"Model switched to {escape_markdown(new_model, version=2)}.",
+        text=f"Model switched to {new_model}.",
         parse_mode='MarkdownV2',
         reply_to_message_id=user_message_id,
     )
