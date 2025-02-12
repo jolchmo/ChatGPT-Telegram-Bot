@@ -39,8 +39,33 @@ from utils.i18n import strings
 from utils.scripts import GetMesageInfo, safe_get, is_emoji
 
 from telegram.constants import ChatAction
-from telegram import BotCommand, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent, Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from telegram.ext import CommandHandler, MessageHandler, ApplicationBuilder, filters, CallbackQueryHandler, Application, AIORateLimiter, InlineQueryHandler, ContextTypes
+from telegram import (
+    BotCommand, 
+    InlineKeyboardMarkup, 
+    InlineQueryResultArticle, 
+    InputTextMessageContent, 
+    Update, 
+    ReplyKeyboardMarkup, 
+    KeyboardButton, 
+    ReplyKeyboardRemove,
+    PreCheckoutQuery,
+    SuccessfulPayment,
+    LabeledPrice,
+)
+from telegram.ext import (
+    CommandHandler, 
+    MessageHandler, 
+    ApplicationBuilder, 
+    filters, 
+    CallbackQueryHandler, 
+    Application, 
+    AIORateLimiter, 
+    InlineQueryHandler, 
+    ContextTypes,
+    PreCheckoutQueryHandler,
+    SuccessfulPaymentHandler,
+)
+
 from datetime import timedelta
 
 import asyncio
@@ -694,25 +719,71 @@ async def switch_model(update, context):
         await context.bot.send_message(
             chat_id=chatid,
             message_thread_id=message_thread_id,
-            text= escape(strings['message_change_which_model'][get_current_lang(convo_id)]),
+            text="Please provide a model name to switch to.",
             parse_mode='MarkdownV2',
             reply_to_message_id=user_message_id,
         )
         return
 
     new_model = context.args[0]
-    Users.set_config(convo_id, "engine", new_model)
+    Users.set_config(convo_id, "GPT_ENGINE", new_model)
     await context.bot.send_message(
         chat_id=chatid,
         message_thread_id=message_thread_id,
-        text= escape(strings['message_change_success'].get(get_current_lang(convo_id), "Model switched to {model}.").format(model=new_model)),
+        text=f"Model switched to {new_model}.",
         parse_mode='MarkdownV2',
         reply_to_message_id=user_message_id,
     )
     await delete_message(update, context, [user_message_id])
 
 
+@decorators.GroupAuthorization
+@decorators.Authorization
+async def start_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """启动支付流程"""
+    chat_id = update.message.chat_id
+    title = "Payment Title"
+    description = "Payment Description"
+    payload = "{}";
+    provider_token = ""
+    currency = "XTR"
+    prices = [LabeledPrice("Test", 1)]  # 价格以最小货币单位表示，例如1000表示10.00美元
 
+    await context.bot.send_invoice(
+        chat_id=chat_id,
+        title=title,
+        description=description,
+        payload=payload,
+        provider_token=provider_token,
+        currency=currency,
+        prices=prices,
+        start_parameter="test-payment",
+        need_name=True,
+        need_phone_number=True,
+        need_email=True,
+        need_shipping_address=True,
+        is_flexible=False,
+    )
+
+# 添加支付处理器
+async def pre_checkout_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """处理预结账查询"""
+    query: PreCheckoutQuery = update.pre_checkout_query
+    # 检查支付信息是否有效
+    if query.invoice_payload != 'expected_payload':
+        await query.answer(ok=False, error_message="Something went wrong...")
+    else:
+        await query.answer(ok=True)
+
+async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """处理成功支付"""
+    payment: SuccessfulPayment = update.message.successful_payment
+    chat_id = update.message.chat_id
+    # 发送支付成功消息
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"Payment successful! Thank you for your purchase of {payment.total_amount / 100} {payment.currency}."
+    )
 
 @decorators.AdminAuthorization
 @decorators.GroupAuthorization
@@ -803,7 +874,6 @@ async def post_init(application: Application) -> None:
         BotCommand('start', 'Start the bot'),
         BotCommand('en2zh', 'Translate to Chinese'),
         BotCommand('zh2en', 'Translate to English'),
-        BotCommand('switch_model','change model')
     ])
     description = (
         "I am an Assistant, a large language model trained by OpenAI. I will do my best to help answer your questions."
@@ -875,6 +945,11 @@ if __name__ == '__main__':
         ), handle_file))
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     application.add_error_handler(error)
+
+    # 添加支付处理器
+    application.add_handler(PreCheckoutQueryHandler(pre_checkout_check))
+    application.add_handler(SuccessfulPaymentHandler(successful_payment))
+    application.add_handler(CommandHandler("start_payment", start_payment))
 
     if WEB_HOOK:
         print("WEB_HOOK:", WEB_HOOK)
