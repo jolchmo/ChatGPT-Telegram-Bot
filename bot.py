@@ -737,7 +737,7 @@ async def switch_model(update, context):
     await delete_message(update, context, [user_message_id])
 
 
-def start_payment(update: Update, context: CallbackContext):
+def start_payment(update, context):
     out = context.bot.send_invoice(
         chat_id=update.message.chat_id,
         title="Test donation",
@@ -750,12 +750,12 @@ def start_payment(update: Update, context: CallbackContext):
     )
 
 
-def pre_checkout_check(update: Update, context: CallbackContext):
+def pre_checkout_check(update, context):
     query = update.pre_checkout_query
     query.answer(ok=True)
 
 
-def successful_payment(update: Update, context):
+def successful_payment(update, context):
     col = get_collection()
     receipt = update.message.successful_payment
     col.insert_one({"telegram_uid": update.message.chat.username, 
