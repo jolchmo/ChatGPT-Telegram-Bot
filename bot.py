@@ -62,8 +62,6 @@ from telegram.ext import (
     AIORateLimiter, 
     InlineQueryHandler, 
     ContextTypes,
-    PreCheckoutQueryHandler,
-    SuccessfulPaymentHandler,
 )
 
 from datetime import timedelta
@@ -947,8 +945,8 @@ if __name__ == '__main__':
     application.add_error_handler(error)
 
     # 添加支付处理器
-    application.add_handler(PreCheckoutQueryHandler(pre_checkout_check))
-    application.add_handler(SuccessfulPaymentHandler(successful_payment))
+    application.add_handler(MessageHandler(filters.PRE_CHECKOUT_QUERY, pre_checkout_check))
+    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
     application.add_handler(CommandHandler("start_payment", start_payment))
 
     if WEB_HOOK:
