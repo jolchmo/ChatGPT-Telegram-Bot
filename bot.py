@@ -979,8 +979,8 @@ if __name__ == '__main__':
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     application.add_error_handler(error)
 
-    app.add_handler(MessageHandler(filters.UpdateType.PRE_CHECKOUT_QUERY, pre_checkout_check))
-    app.add_handler(MessageHandler(filters.UpdateType.SUCCESSFUL_PAYMENT, successful_payment))
+    application.add_handler(MessageHandler(filters.UpdateType.PRE_CHECKOUT_QUERY, pre_checkout_check))
+    application.add_handler(MessageHandler(filters.UpdateType.SUCCESSFUL_PAYMENT, successful_payment))
     application.add_handler(CommandHandler("start_payment", start_payment))
 
     if WEB_HOOK:
