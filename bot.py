@@ -705,7 +705,7 @@ async def switch_model(update, context):
     await context.bot.send_message(
         chat_id=chatid,
         message_thread_id=message_thread_id,
-        text= escape(strings['message_change_success'][get_current_lang(convo_id)]),
+        text= escape(strings['message_change_success'].get(get_current_lang(convo_id)], "Model switched to {model}.").format(model=new_model)),
         parse_mode='MarkdownV2',
         reply_to_message_id=user_message_id,
     )
