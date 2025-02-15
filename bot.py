@@ -856,7 +856,7 @@ async def post_init(application: Application) -> None:
         BotCommand('en2zh', 'Translate to Chinese'),
         BotCommand('zh2en', 'Translate to English'),        \
         BotCommand('switch_model', 'Change models'),
-        BotCommand('start_payment', 'pay star'),
+        # BotCommand('start_payment', 'pay star'),
 
     ])
     description = (
